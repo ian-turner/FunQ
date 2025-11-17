@@ -1,12 +1,8 @@
 module Parser where
 
 import Text.Parsec
-import Text.Parsec.Combinator
-import Text.Parsec.Char
-import Control.Applicative ((<$>), (<*>), (<*), (*>), (<|>), many, (<$))
-import Control.Monad (void, ap)
-import Data.Char (isLetter, isDigit)
-import FunctionsAndTypesForParsing
+import Control.Monad
+import qualified Text.Parsec.Expr as E
 
 
 type Parser a = Parsec String () a
@@ -17,11 +13,24 @@ data Parentheses = Parentheses Integer
 data SingleAdd = SingleAdd Integer Integer
                  deriving (Eq,Show)
 
+data Pattern = PVar String
+               | PTuple [Pattern]
+               deriving (Show, Eq)
+
 data Expr = Num Integer
             | Var String
-            | Add Expr Expr
             | Parens Expr
+            | PrefixOp String Expr
+            | BinaryOp Expr String Expr
+            | Tuple [Expr]
+            | Call Expr [Expr]
+            | App Expr Expr
+            | Let Pattern Expr Expr
+            | Defn String Pattern Expr
             deriving (Show, Eq)
+
+reservedNames :: [String]
+reservedNames = ["let", "in", "defn"]
 
 whitespace :: Parser ()
 whitespace = void $ many $ oneOf " \n\t"
@@ -32,47 +41,107 @@ lexeme p = do
     whitespace
     return x
 
+integer :: Parser Integer
+integer = read <$> lexeme (many1 digit)
+
+identifier :: Parser String
+identifier = lexeme (try (p >>= check))
+  where
+    p = (:) <$> firstChar <*> many nonFirstChar
+    firstChar = letter <|> char '_'
+    nonFirstChar = digit <|> firstChar
+
+    check x
+      | x `elem` reservedNames =
+        unexpected ("reserved word " ++ show x)
+      | otherwise = return x
+
+reserved :: String -> Parser ()
+reserved w = lexeme . try $ do
+    string w
+    notFollowedBy (alphaNum <|> char '_')
+
+symbol :: String -> Parser String
+symbol s = lexeme $ string s
+
 num :: Parser Expr
-num = do
-    n <- lexeme $ many1 digit
-    return $ Num $ read n
+num = Num <$> integer
 
 var :: Parser Expr
-var = lexeme $ do
-    fc <- firstChar
-    rest <- many nonFirstChar
-    return $ Var (fc:rest)
+var = Var <$> identifier
+
+parensOrTuple :: Parser Expr
+parensOrTuple = between (symbol "(") (symbol ")") inner
   where
-    firstChar = satisfy (\a -> isLetter a || a == '_')
-    nonFirstChar = satisfy (\a -> isDigit a || isLetter a || a == '_')
+    inner = do
+        es <- expr `sepBy1` symbol ","
+        case es of
+            [e] -> return $ Parens e
+            ps  -> return $ Tuple ps
 
-parens :: Parser Expr -> Parser Expr
-parens exprImpl = do
-    void $ lexeme $ char '('
-    e <- exprImpl
-    void $ lexeme $ char ')'
-    return $ Parens e
+atom :: Parser Expr
+atom = var <|> num <|> parensOrTuple
 
-add :: Parser Expr
-add = do
-    e0 <- expr
-    void $ lexeme $ char '+'
+term :: Parser Expr
+term = do
+    f    <- atom
+    args <- many atom
+    return $ foldl App f args
+
+pattern :: Parser Pattern
+pattern = tuplePattern <|> simplePattern
+  where
+    simplePattern = PVar <$> identifier
+    tuplePattern = do
+        ps <- between (symbol "(") (symbol ")") (pattern `sepBy1` symbol ",")
+        case ps of
+            [p] -> return p
+            ps' -> return $ PTuple ps'
+
+table = [[prefix "-", prefix "+"]
+        ,[binary "^" E.AssocLeft]
+        ,[binary "*" E.AssocLeft
+         ,binary "/" E.AssocLeft
+         ,binary "%" E.AssocLeft]
+        ,[binary "+" E.AssocLeft
+         ,binary "-" E.AssocLeft]
+        ,[binary "<" E.AssocNone
+         ,binary ">" E.AssocNone]
+        ,[binary "==" E.AssocRight]
+        ,[prefix "not"]
+        ,[binary "and" E.AssocLeft]
+        ,[binary "or" E.AssocLeft]
+        ]
+  where
+    binary name assoc =
+        E.Infix (mkBinOp name <$ symbol name) assoc
+    mkBinOp nm a b = BinaryOp a nm b
+    prefix name = E.Prefix (PrefixOp name <$ symbol name)
+
+logicExpr :: Parser Expr
+logicExpr = E.buildExpressionParser table term
+
+letExpr :: Parser Expr
+letExpr = do
+    reserved "let"
+    p <- pattern
+    symbol "="
     e1 <- expr
-    return $ Add e0 e1
+    reserved "in"
+    e2 <- expr
+    return $ Let p e1 e2
 
-numOrVar :: Parser Expr
-numOrVar = num <|> var
-
-term :: Parser Expr -> Parser Expr
-term exprImpl = num <|> var <|> parens exprImpl
+defnExpr :: Parser Expr
+defnExpr = do
+    reserved "defn"
+    id <- identifier
+    p <- pattern
+    symbol "="
+    e <- expr
+    return $ Defn id p e
 
 expr :: Parser Expr
-expr = chainl1 termP op
-  where
-    op = do
-        void $ lexeme $ char '+'
-        return Add
-    termP = term expr
+expr = defnExpr <|> letExpr <|> logicExpr
 
 parseWithEof :: Parser a -> String -> Either ParseError a
 parseWithEof p = parse (p <* eof) ""
@@ -83,5 +152,3 @@ parseWithWhitespace p = parseWithEof wrapper
     wrapper = do
         whitespace
         p
-
-parseResult = parseWithWhitespace expr "32"
