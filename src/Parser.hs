@@ -13,11 +13,13 @@ data Parentheses = Parentheses Integer
 data SingleAdd = SingleAdd Integer Integer
                  deriving (Eq,Show)
 
-data Pattern = PVar String
+data Pattern = PUnit
+               | PVar String
                | PTuple [Pattern]
                deriving (Show, Eq)
 
-data Expr = Num Integer
+data Expr = Unit
+            | Num Integer
             | Var String
             | Parens Expr
             | PrefixOp String Expr
@@ -70,18 +72,20 @@ num = Num <$> integer
 var :: Parser Expr
 var = Var <$> identifier
 
-parensOrTuple :: Parser Expr
-parensOrTuple = between (symbol "(") (symbol ")") inner
+unitParensOrTuple :: Parser Expr
+unitParensOrTuple = unitPattern <|> (between (symbol "(") (symbol ")") inner)
   where
+    unitPattern = do
+        reserved "()"
+        return Unit
     inner = do
         es <- expr `sepBy1` symbol ","
         case es of
-            []  -> return $ Tuple []
             [e] -> return $ Parens e
             ps  -> return $ Tuple ps
 
 atom :: Parser Expr
-atom = var <|> num <|> parensOrTuple
+atom = var <|> num <|> unitParensOrTuple
 
 term :: Parser Expr
 term = do
@@ -90,8 +94,11 @@ term = do
     return $ foldl App f args
 
 pattern :: Parser Pattern
-pattern = tuplePattern <|> simplePattern
+pattern = unitPattern <|> tuplePattern <|> simplePattern
   where
+    unitPattern = do
+        reserved "()"
+        return PUnit
     simplePattern = PVar <$> identifier
     tuplePattern = do
         ps <- between (symbol "(") (symbol ")") (pattern `sepBy1` symbol ",")
