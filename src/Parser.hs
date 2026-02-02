@@ -14,12 +14,13 @@ data Expr = Unit
             | App Expr Expr
             | Let [String] Expr Expr
             | Lambda [String] Expr
+            | IfElse Expr Expr Expr
             deriving (Show, Eq)
 
 data Stmt = VarDef String Expr deriving (Show, Eq)
 
 reservedNames :: [String]
-reservedNames = ["let", "in"]
+reservedNames = ["let", "in", "if", "then", "else"]
 
 whitespace :: Parser ()
 whitespace = void $ many $ oneOf " \n\t"
@@ -108,8 +109,18 @@ lamExpr = do
     e <- expr
     return $ Lambda p e
 
+ifElseExpr :: Parser Expr
+ifElseExpr = do
+    reserved "if"
+    eBool <- expr
+    reserved "then"
+    trueExp <- expr
+    reserved "else"
+    falseExp <- expr
+    return $ IfElse eBool trueExp falseExp
+    
 expr :: Parser Expr
-expr = lamExpr <|> letExpr <|> term
+expr = lamExpr <|> letExpr <|> ifElseExpr <|> term
 
 varDef :: Parser Stmt
 varDef = do
