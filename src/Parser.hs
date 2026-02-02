@@ -118,7 +118,7 @@ varDef = do
     e <- expr
     case ids of
         [id] -> return $ VarDef id e
-        (funId:ids') -> return $ VarDef funId (Lambda ids' e)
+        (funId:vars) -> return $ VarDef funId (Lambda vars e)
 
 statement :: Parser Stmt
 statement = varDef
