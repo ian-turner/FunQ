@@ -113,17 +113,14 @@ lamExpr = do
 expr :: Parser Expr
 expr = lamExpr <|> letExpr <|> term
 
-defStmt :: Parser Stmt
-defStmt = do
+statement :: Parser Stmt
+statement = do
     ids <- many identifier
     symbol "="
     e <- expr
     case ids of
         [id] -> return $ VarDef id e
         (funId:ids') -> return $ FunDef funId ids' e
-
-statement :: Parser Stmt
-statement = defStmt
 
 parseWithEof :: Parser a -> String -> Either ParseError a
 parseWithEof p = parse (p <* eof) ""
