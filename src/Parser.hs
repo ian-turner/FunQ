@@ -7,12 +7,7 @@ import qualified Text.Parsec.Expr as E
 
 type Parser a = Parsec String () a
 
-data Parentheses = Parentheses Integer
-                   deriving (Eq,Show)
-
-data Pattern = PUnit
-               | PVar String
-               | PTuple [Pattern]
+data Pattern = PVar String | PTuple [Pattern]
                deriving (Show, Eq)
 
 data Expr = Unit
@@ -90,11 +85,8 @@ term = do
     return $ foldl App f args
 
 pattern :: Parser Pattern
-pattern = unitPattern <|> tuplePattern <|> simplePattern
+pattern = tuplePattern <|> simplePattern
   where
-    unitPattern = do
-        reserved "()"
-        return PUnit
     simplePattern = PVar <$> identifier
     tuplePattern = do
         ps <- between (symbol "(") (symbol ")") (pattern `sepBy1` symbol ",")
