@@ -10,7 +10,7 @@ import ConcreteSyntax
 type Parser a = Parsec String () a
 
 reservedNames :: [String]
-reservedNames = ["let", "in", "if", "then", "else"]
+reservedNames = ["let", "in", "if", "then", "else", "->"]
 
 whitespace :: Parser ()
 whitespace = void $ many $ oneOf " \n\t"
@@ -109,8 +109,24 @@ ifElseExpr = do
     falseExp <- expr
     return $ IfExp eBool trueExp falseExp
 
+arrowExpr :: Parser Exp
+arrowExpr = do
+    e1 <- expr
+    reserved "->"
+    e2 <- expr
+    return $ Arrow e1 e2
+
 expr :: Parser Exp
 expr = lamExpr <|> letExpr <|> ifElseExpr <|> term
+
+typeDecl :: Parser Decl
+typeDecl = do
+    id <- identifier
+    symbol ":"
+    ts <- expr `sepBy1` (symbol "->")
+    case ts of
+        [t] -> return $ TypeDecl id t
+        (t:ts) ->  return $ TypeDecl id (foldr Arrow t ts)
 
 varOrFunDecl :: Parser Decl
 varOrFunDecl = do
@@ -122,7 +138,7 @@ varOrFunDecl = do
         (funId : vars) -> return $ FunDecl funId vars e
 
 decls :: Parser Decl
-decls = varOrFunDecl
+decls = typeDecl <|> varOrFunDecl
 
 parseWithEof :: Parser a -> String -> Either ParseError a
 parseWithEof p = parse (p <* eof) ""
