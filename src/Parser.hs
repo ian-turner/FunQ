@@ -81,8 +81,8 @@ pattern = tuplePattern <|> simplePattern
         ps <- between (symbol "(") (symbol ")") (identifier `sepBy1` symbol ",")
         return ps
 
-letExp :: Parser Exp
-letExp = do
+letExpr :: Parser Exp
+letExpr = do
     reserved "let"
     p <- pattern
     symbol "="
@@ -91,17 +91,16 @@ letExp = do
     e2 <- expr
     return $ Let p e1 e2
 
-
-lamExp :: Parser Exp
-lamExp = do
+lamExpr :: Parser Exp
+lamExpr = do
     reserved "\\"
     p <- pattern
     symbol "->"
     e <- expr
     return $ Lam p e
 
-ifElseExp :: Parser Exp
-ifElseExp = do
+ifElseExpr :: Parser Exp
+ifElseExpr = do
     reserved "if"
     eBool <- expr
     reserved "then"
@@ -109,9 +108,9 @@ ifElseExp = do
     reserved "else"
     falseExp <- expr
     return $ IfExp eBool trueExp falseExp
-    
+
 expr :: Parser Exp
-expr = lamExp <|> letExp <|> ifElseExp <|> term
+expr = lamExpr <|> letExpr <|> ifElseExpr <|> term
 
 varOrFunDecl :: Parser Decl
 varOrFunDecl = do

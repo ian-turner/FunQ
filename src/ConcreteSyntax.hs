@@ -2,17 +2,18 @@ module ConcreteSyntax where
 
 
 data Exp
-  = Unit
-  | Num Integer
-  | Var String
-  | Tuple [Exp]
-  | App Exp Exp
-  | Let [String] Exp Exp
-  | Lam [String] Exp
-  | IfExp Exp Exp Exp
+  = Unit                                -- Unit type and value
+  | Num Integer                         -- Number constants
+  | Base String                         -- Base types (begin with uppercase)
+  | Var String                          -- Variable identifiers
+  | Tuple [Exp]                         -- Tuple of objects (any size)
+  | App Exp Exp                         -- Function application
+  | Let [String] Exp Exp                -- Let expression
+  | Lam [String] Exp                    -- Lambda expressions
+  | IfExp Exp Exp Exp                   -- If/then/else expressions
   deriving (Show, Eq)
 
 data Decl
-  = VarDecl String Exp
-  | FunDecl String [String] Exp
+  = VarDecl String Exp                  -- Variable declarations
+  | FunDecl String [String] Exp         -- Function declarations
   deriving (Show, Eq)
