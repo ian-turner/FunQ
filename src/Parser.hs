@@ -17,16 +17,12 @@ data Expr = Unit
             | IfElse Expr Expr Expr
             deriving (Show, Eq)
 
-data DataConstr = DataConstr String [Expr]
-                  deriving (Show, Eq)
-
 data Decl = VarDecl String Expr
             | FunDecl String [String] Expr
-            | DataDecl String [String] [DataConstr]
             deriving (Show, Eq)
 
 reservedNames :: [String]
-reservedNames = ["let", "in", "if", "then", "else", "data"]
+reservedNames = ["let", "in", "if", "then", "else"]
 
 whitespace :: Parser ()
 whitespace = void $ many $ oneOf " \n\t"
