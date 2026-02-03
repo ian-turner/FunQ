@@ -17,10 +17,16 @@ data Expr = Unit
             | IfElse Expr Expr Expr
             deriving (Show, Eq)
 
-data Stmt = VarDef String Expr deriving (Show, Eq)
+data DataConstr = DataConstr String [Expr]
+                  deriving (Show, Eq)
+
+data Decl = VarDecl String Expr
+            | FunDecl String [String] Expr
+            | DataDecl String [String] [DataConstr]
+            deriving (Show, Eq)
 
 reservedNames :: [String]
-reservedNames = ["let", "in", "if", "then", "else"]
+reservedNames = ["let", "in", "if", "then", "else", "data"]
 
 whitespace :: Parser ()
 whitespace = void $ many $ oneOf " \n\t"
@@ -122,17 +128,17 @@ ifElseExpr = do
 expr :: Parser Expr
 expr = lamExpr <|> letExpr <|> ifElseExpr <|> term
 
-varDef :: Parser Stmt
-varDef = do
+varOrFunDecl :: Parser Decl
+varOrFunDecl = do
     ids <- many identifier
     symbol "="
     e <- expr
     case ids of
-        [id] -> return $ VarDef id e
-        (funId:vars) -> return $ VarDef funId (Lambda vars e)
+        [id] -> return $ VarDecl id e
+        (funId : vars) -> return $ FunDecl funId vars e
 
-statement :: Parser Stmt
-statement = varDef
+decls :: Parser Decl
+decls = varOrFunDecl
 
 parseWithEof :: Parser a -> String -> Either ParseError a
 parseWithEof p = parse (p <* eof) ""
