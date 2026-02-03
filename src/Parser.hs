@@ -4,22 +4,10 @@ import Text.Parsec
 import Control.Monad
 import qualified Text.Parsec.Expr as E
 
+import ConcreteSyntax
+
 
 type Parser a = Parsec String () a
-
-data Expr = Unit
-            | Num Integer
-            | Var String
-            | Tuple [Expr]
-            | App Expr Expr
-            | Let [String] Expr Expr
-            | Lambda [String] Expr
-            | IfElse Expr Expr Expr
-            deriving (Show, Eq)
-
-data Decl = VarDecl String Expr
-            | FunDecl String [String] Expr
-            deriving (Show, Eq)
 
 reservedNames :: [String]
 reservedNames = ["let", "in", "if", "then", "else"]
@@ -119,7 +107,7 @@ ifElseExpr = do
     trueExp <- expr
     reserved "else"
     falseExp <- expr
-    return $ IfElse eBool trueExp falseExp
+    return $ IfExpr eBool trueExp falseExp
     
 expr :: Parser Expr
 expr = lamExpr <|> letExpr <|> ifElseExpr <|> term

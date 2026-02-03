@@ -63,6 +63,7 @@ executable funq
     -- Modules included in this executable, other than Main.
     other-modules:
         Parser
+        ConcreteSyntax
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
