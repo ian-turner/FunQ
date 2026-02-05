@@ -27,5 +27,4 @@ data Exp
   | Lam (Bind [Variable] Exp)
   | Let (Bind [Variable] Exp)
   | IfExp Exp Exp Exp
-  | Arrow Exp Exp
   deriving (Eq, Generic, Nominal, NominalShow, NominalSupport, Show)

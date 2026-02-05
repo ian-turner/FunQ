@@ -10,7 +10,7 @@ import ConcreteSyntax
 type Parser a = Parsec String () a
 
 reservedNames :: [String]
-reservedNames = ["let", "in", "if", "then", "else"]
+reservedNames = ["let", "in", "if", "then", "else", "=", ":"]
 
 whitespace :: Parser ()
 whitespace = void $ many $ oneOf " \n\t"
@@ -109,36 +109,25 @@ ifElseExpr = do
     falseExp <- expr
     return $ IfExp eBool trueExp falseExp
 
-table = [[binary "->" E.AssocRight]]
-  where
-    binary name assoc =
-        (E.Infix (mkBinOp name <$ symbol name) assoc)
-    mkBinOp nm a b = Arrow a b
-
-arrowExpr :: Parser Exp
-arrowExpr = E.buildExpressionParser table term
-
 expr :: Parser Exp
-expr = lamExpr <|> arrowExpr <|> letExpr <|> ifElseExpr <|> term
+expr = lamExpr <|> letExpr <|> ifElseExpr <|> term
 
-typeDecl :: Parser Decl
-typeDecl = do
+varDecl :: Parser Decl
+varDecl = do
     id <- identifier
-    symbol ":"
-    t <- expr
-    return $ TypeDecl id t
-
-varOrFunDecl :: Parser Decl
-varOrFunDecl = do
-    ids <- many identifier
-    symbol "="
+    reserved "="
     e <- expr
-    case ids of
-        [id] -> return $ VarDecl id e
-        (funId : vars) -> return $ FunDecl funId vars e
+    return $ VarDecl id e
 
-decls :: Parser Decl
-decls = try varOrFunDecl <|> typeDecl
+funDecl :: Parser Decl
+funDecl = do
+    (funId : vars) <- many identifier
+    reserved "="
+    e <- expr
+    return $ FunDecl funId vars e
+
+decl :: Parser Decl
+decl = try varDecl <|> funDecl
 
 parseWithEof :: Parser a -> String -> Either ParseError a
 parseWithEof p = parse (p <* eof) ""

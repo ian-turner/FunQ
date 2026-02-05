@@ -10,11 +10,9 @@ data Exp
   | Let [String] Exp Exp                -- Let expression
   | Lam [String] Exp                    -- Lambda expressions
   | IfExp Exp Exp Exp                   -- If/then/else expressions
-  | Arrow Exp Exp                       -- Arrow for type declarations
   deriving (Show, Eq)
 
 data Decl
-  = TypeDecl String Exp                 -- Type declarations
-  | VarDecl String Exp                  -- Variable declarations
+  = VarDecl String Exp                  -- Variable declarations
   | FunDecl String [String] Exp         -- Function declarations
   deriving (Show, Eq)
