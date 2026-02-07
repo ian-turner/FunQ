@@ -19,13 +19,15 @@ type Parser a = IndentParser String ParserState a
 
 data ParserState = 
   ParserState
-    { expOpTable :: IM.IntMap [E.Operator String ParserState (IndentT Identity) Exp]
+    { expParser :: IndentParser String ParserState Exp
+    , expOpTable :: IM.IntMap [E.Operator String ParserState (IndentT Identity) Exp]
     }
 
 initialParserState :: ParserState
 initialParserState =
   ParserState
-    { expOpTable = IM.fromAscList (zip [0 ..] initialOpTable)
+    { expParser = E.buildExpressionParser initialOpTable atomExp
+    , expOpTable = IM.fromAscList (zip [0 ..] initialOpTable)
     }
 
 initialOpTable :: [[E.Operator String ParserState (IndentT Identity) Exp]]
@@ -46,12 +48,37 @@ funDef = do
   f <- var
   args <- many var
   reservedOp "="
-  return $ FunDef f args Unit
+  def <- term
+  return $ FunDef f args def
+
+term :: Parser Exp
+term = getState >>= \st -> expParser st
+
+atomExp :: Parser Exp
+atomExp = try appExp <|> varExp
+
+appExp :: Parser Exp
+appExp =
+  manyLines
+    (do head <- headExp
+        return $ foldl (\z x -> App z x) head)
+    arg
+  where
+    headExp =
+      varExp
+    arg =
+      varExp
+
+varExp :: Parser Exp
+varExp = (var >>= \x -> return $ Var x)
 
 var :: Parser String
 var = do
   name <- identifier
   return name
+
+manyLines :: Parser ([a] -> b) -> Parser a -> Parser b
+manyLines h p = h <*/> p
 
 -- | Language token definition
 langStyle :: (Stream s m Char, Monad m) => Token.GenLanguageDef s u m
