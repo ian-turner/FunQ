@@ -55,7 +55,10 @@ term :: Parser Exp
 term = getState >>= \st -> expParser st
 
 atomExp :: Parser Exp
-atomExp = try appExp <|> varExp
+atomExp = try unit <|> appExp <|> letExp <|> tupleExp <|> varExp
+
+unit :: Parser Exp
+unit = reservedOp "()" >> return Unit
 
 appExp :: Parser Exp
 appExp =
@@ -67,7 +70,35 @@ appExp =
     headExp =
       varExp
     arg =
-      varExp
+      try unit <|> varExp <|> tupleExp 
+
+tupleExp :: Parser Exp
+tupleExp = do
+  tms <- parens (term `sepBy1` comma)
+  case tms of
+    []  -> return Unit
+    [t] -> return t
+    ts  -> return $ Tuple ts
+
+letExp :: Parser Exp
+letExp = do
+  reserved "let"
+  bs <- block bind
+  reserved "in"
+  t <- term
+  return $ Let bs t
+  where
+    bind = tuple <|> single
+    single = do
+      n <- var
+      reservedOp "="
+      d <- term
+      return $ BSingle n d
+    tuple = do
+      ns <- parens $ var `sepBy1` comma
+      reservedOp "="
+      d <- term
+      return $ BTuple ns d
 
 varExp :: Parser Exp
 varExp = (var >>= \x -> return $ Var x)
@@ -102,6 +133,7 @@ langStyle =
       ]
     , Token.reservedOpNames =
         [ "\\"
+        , "()"
         ]
     }
 

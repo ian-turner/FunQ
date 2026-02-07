@@ -8,7 +8,7 @@ import Parser
 
 
 parserIO :: Either ParseError a -> IO a
-parserIO (Left e) = error "parse error"
+parserIO (Left e) = error $ show e
 parserIO (Right a) = return a
 
 
