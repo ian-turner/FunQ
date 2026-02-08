@@ -31,7 +31,10 @@ initialParserState =
     }
 
 initialOpTable :: [[E.Operator String ParserState (IndentT Identity) Exp]]
-initialOpTable = [ [] ]
+initialOpTable = [ []
+                 , []
+                 , []
+                 ]
 
 parseModule :: String -> String -> ParserState
                -> Either P.ParseError ([Decl], ParserState)
@@ -55,22 +58,21 @@ term :: Parser Exp
 term = getState >>= \st -> expParser st
 
 atomExp :: Parser Exp
-atomExp = try unit <|> appExp <|> letExp <|> tupleExp <|> varExp
+atomExp = unit <|> try letExp <|> try tupleExp <|> appExp <|> varExp
 
 unit :: Parser Exp
 unit = reservedOp "()" >> return Unit
 
 appExp :: Parser Exp
-appExp =
-  manyLines
-    (do head <- headExp
-        return $ foldl (\z x -> App z x) head)
-    arg
+appExp = do
+  head <- headExp
+  as <- many arg
+  return $ foldl (\z x -> App z x) head as
   where
     headExp =
       varExp
     arg =
-      try unit <|> varExp <|> tupleExp 
+      try unit <|> varExp <|> tupleExp
 
 tupleExp :: Parser Exp
 tupleExp = do
@@ -90,12 +92,12 @@ letExp = do
   where
     bind = tuple <|> single
     single = do
-      n <- var
+      n <- try var
       reservedOp "="
       d <- term
       return $ BSingle n d
     tuple = do
-      ns <- parens $ var `sepBy1` comma
+      ns <- parens $ try $ var `sepBy1` comma
       reservedOp "="
       d <- term
       return $ BTuple ns d
@@ -121,8 +123,8 @@ langStyle =
     , Token.nestedComments = True
     , Token.identStart = letter
     , Token.identLetter = alphaNum <|> oneOf "_'"
-    , Token.opStart = oneOf "!&*+/"
-    , Token.opLetter = oneOf "!&*+/"
+    , Token.opStart = oneOf "!&*+/="
+    , Token.opLetter = oneOf "!&*+/="
     , Token.caseSensitive = True
     , Token.reservedNames = 
       [ "in"
@@ -133,6 +135,7 @@ langStyle =
       ]
     , Token.reservedOpNames =
         [ "\\"
+        , "="
         , "()"
         ]
     }
