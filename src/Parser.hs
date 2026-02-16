@@ -40,14 +40,14 @@ parseModule :: String -> String -> ParserState
                -> Either P.ParseError ([Decl], ParserState)
 parseModule srcName cnts st = runIndent $ runParserT decls st srcName cnts
 
-decl :: Parser Decl
-decl = try varDef <|> funDef
-
 decls :: Parser ([Decl], ParserState)
 decls = do
     bs <- block decl
     st <- getState
     return (bs, st)
+
+decl :: Parser Decl
+decl = try funDef <|> varDef
 
 funDef :: Parser Decl
 funDef = do

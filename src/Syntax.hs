@@ -28,3 +28,8 @@ data Exp
   | Let (Bind [Variable] Exp)
   | IfExp Exp Exp Exp
   deriving (Eq, Generic, Nominal, NominalShow, NominalSupport, Show)
+
+data Decl
+  = VarDef String Exp
+  | FunDef String [String] Exp
+  deriving (Show, Eq)
